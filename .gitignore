@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+fridge_scan.db
+*.sqlite
+*.sqlite3
+node_modules/
+dist/
+build/
+
+# Local development tools
+.agents/
+.claude/

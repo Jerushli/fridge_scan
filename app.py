@@ -1,3 +1,4 @@
+import re
 
 import streamlit as st
 
@@ -13,8 +14,7 @@ from database import (
     delete_grocery_item,
     record_scan,
 )
-from food_detection import detect_foods
-from recipes import recommend_recipes
+from food_detection import analyze_fridge
 
 
 st.set_page_config(
@@ -26,135 +26,274 @@ st.set_page_config(
 
 init_db()
 
-st.markdown("""
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,600&display=swap');
+# --------------------------------------------------
+# PAGE STYLING
+# --------------------------------------------------
 
-:root {
-    --green: #214333;
-    --sage: #5b8468;
-    --cream: #f7f8f4;
-    --line: #e0e6dc;
-    --muted: #78847b;
-}
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,600&display=swap');
 
-.stApp {
-    background: var(--cream);
-    color: #25362d;
-    font-family: 'DM Sans', sans-serif;
-}
+    :root {
+        --green: #214333;
+        --sage: #5b8468;
+        --cream: #f7f8f4;
+        --line: #e0e6dc;
+        --muted: #78847b;
+    }
 
-.block-container {
-    max-width: 1120px;
-    padding: 2rem 1.5rem 4rem;
-}
+    .stApp {
+        background: var(--cream);
+        color: #25362d;
+        font-family: 'DM Sans', sans-serif;
+    }
 
-h1, h2, h3 {
-    color: #25362d;
-    letter-spacing: -0.035em;
-}
-
-h1 {
-    font-size: clamp(2rem, 5vw, 3.6rem) !important;
-    font-weight: 700 !important;
-}
-
-[data-testid="stSidebar"] {
-    background: #fff;
-    border-right: 1px solid var(--line);
-}
-
-[data-testid="stMetric"] {
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 20px;
-}
-
-[data-testid="stMetricValue"] {
-    color: var(--green);
-    font-weight: 700;
-}
-
-.stButton > button,
-.stFormSubmitButton > button {
-    min-height: 44px;
-    border-radius: 10px;
-    font-weight: 600;
-    border: 1px solid var(--line);
-    transition: all 0.2s ease;
-}
-
-.stButton > button[kind="primary"],
-.stFormSubmitButton > button[kind="primary"] {
-    background: var(--green);
-    color: white;
-    border-color: var(--green);
-}
-
-.stButton > button:hover,
-.stFormSubmitButton > button:hover {
-    border-color: var(--sage);
-    color: var(--sage);
-}
-
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background: #fff;
-    border-color: var(--line);
-    border-radius: 16px;
-}
-
-[data-testid="stFileUploader"] {
-    background: #fff;
-    border: 1px dashed #a8b9a8;
-    border-radius: 14px;
-    padding: 12px;
-}
-
-[data-testid="stImage"] img {
-    border-radius: 12px;
-}
-
-@media (max-width: 640px) {
     .block-container {
-        padding: 1rem 0.8rem 2rem;
+        max-width: 1120px;
+        padding: 2rem 1.5rem 4rem;
+    }
+
+    h1, h2, h3 {
+        color: #25362d;
+        letter-spacing: -0.035em;
     }
 
     h1 {
-        font-size: 2.1rem !important;
+        font-size: clamp(2rem, 5vw, 3.6rem) !important;
+        font-weight: 700 !important;
+    }
+
+    [data-testid="stSidebar"] {
+        background: #fff;
+        border-right: 1px solid var(--line);
     }
 
     [data-testid="stMetric"] {
-        padding: 12px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
     }
 
-    [data-testid="stMetricLabel"] {
-        font-size: 0.8rem;
+    [data-testid="stMetricValue"] {
+        color: var(--green);
+        font-weight: 700;
     }
 
     .stButton > button,
     .stFormSubmitButton > button {
-        width: 100%;
-        min-height: 46px;
+        min-height: 44px;
+        border-radius: 10px;
+        font-weight: 600;
+        border: 1px solid var(--line);
+        transition: all 0.2s ease;
     }
-}
-</style>
 
-""", unsafe_allow_html=True)
+    .stButton > button[kind="primary"],
+    .stFormSubmitButton > button[kind="primary"] {
+        background: var(--green);
+        color: white;
+        border-color: var(--green);
+    }
 
+    .stButton > button:hover,
+    .stFormSubmitButton > button:hover {
+        border-color: var(--sage);
+        color: var(--sage);
+    }
+
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background: #fff;
+        border-color: var(--line);
+        border-radius: 16px;
+    }
+
+    [data-testid="stFileUploader"] {
+        background: #fff;
+        border: 1px dashed #a8b9a8;
+        border-radius: 14px;
+        padding: 12px;
+    }
+
+    [data-testid="stImage"] img {
+        border-radius: 12px;
+    }
+
+    @media (max-width: 640px) {
+        .block-container {
+            padding: 1rem 0.8rem 2rem;
+        }
+
+        h1 {
+            font-size: 2.1rem !important;
+        }
+
+        [data-testid="stMetric"] {
+            padding: 12px;
+        }
+
+        [data-testid="stMetricLabel"] {
+            font-size: 0.8rem;
+        }
+
+        .stButton > button,
+        .stFormSubmitButton > button {
+            width: 100%;
+            min-height: 46px;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# --------------------------------------------------
+# SHARED HELPERS
+# --------------------------------------------------
 
 def title_block(title, subtitle):
     st.title(title)
     st.caption(subtitle)
 
 
+
+def get_food_category(name):
+    """Classify detected foods consistently."""
+    import re
+
+    food = " ".join(str(name).casefold().replace("&", " ").split())
+    words = set(re.findall(r"[a-z]+", food))
+
+    categories = {
+        "Vegetables": {
+            "tomato", "tomatoes", "pepper", "peppers", "carrot",
+            "carrots", "cucumber", "cucumbers", "broccoli", "cabbage",
+            "onion", "onions", "potato", "potatoes", "spinach",
+            "lettuce", "cauliflower", "celery", "garlic", "ginger",
+            "zucchini", "corn", "mushroom", "mushrooms", "eggplant",
+            "beetroot", "radish", "peas", "beans",
+        },
+        "Fruits": {
+            "apple", "apples", "pear", "pears", "orange", "oranges",
+            "lemon", "lemons", "lime", "limes", "strawberry",
+            "strawberries", "blueberry", "blueberries", "raspberry",
+            "raspberries", "blackberry", "blackberries", "banana",
+            "bananas", "grape", "grapes", "kiwi", "mango", "mangoes",
+            "pineapple", "watermelon", "melon", "peach", "peaches",
+            "plum", "cherry", "cherries", "avocado", "papaya",
+        },
+        "Dairy & Eggs": {
+            "milk", "cheese", "cheddar", "mozzarella", "parmesan",
+            "gouda", "butter", "yogurt", "yoghurt", "cream",
+            "curd", "egg", "eggs", "paneer",
+        },
+        "Meat & Seafood": {
+            "chicken", "beef", "pork", "fish", "salmon", "shrimp",
+            "prawn", "prawns", "sausage", "sausages", "ham", "bacon",
+            "salami", "pepperoni", "bologna", "prosciutto", "turkey",
+            "lamb", "meat", "tuna", "crab", "seafood",
+        },
+        "Pantry": {
+            "oil", "rice", "flour", "pasta", "bread", "salt",
+            "sugar", "oats", "cereal", "noodles", "lentils", "grain",
+            "quinoa", "spice", "spices",
+        },
+        "Condiments": {
+            "pickle", "pickles", "ketchup", "mustard", "mayonnaise",
+            "mayo", "sauce", "sauces", "dressing", "relish", "chutney",
+        },
+    }
+
+    # Check complete names first, so "cherry tomatoes" are vegetables.
+    if "tomato" in words or "tomatoes" in words:
+        return "Vegetables"
+
+    # "Bell pepper" is a vegetable; peppercorn is a pantry item.
+    if "peppercorn" in words:
+        return "Pantry"
+
+    # Prefer meat over dairy, and use word matches for descriptive names.
+    for category in (
+        "Vegetables",
+        "Fruits",
+        "Meat & Seafood",
+        "Dairy & Eggs",
+        "Condiments",
+        "Pantry",
+    ):
+        if words & categories[category]:
+            return category
+
+    return "Other"
+
+def normalize_detected_inventory(raw_inventory):
+    """
+    Convert the AI response fields:
+        item, quantity
+    into the fields expected by the app and database:
+        name, quantity_status, category, quantity, unit
+    """
+    normalized = []
+
+    for item in raw_inventory:
+        if not isinstance(item, dict):
+            continue
+
+        # Current AI response uses "item" and "quantity".
+        # Also accept the app's normalized field names.
+        name = item.get("name") or item.get("item")
+        status = item.get("quantity_status") or item.get("quantity")
+
+        if not isinstance(name, str) or not name.strip():
+            continue
+
+        if not isinstance(status, str):
+            continue
+
+        status = status.strip().title()
+
+        if status not in {"Full", "Medium", "Low"}:
+            continue
+
+        name = " ".join(name.strip().split())
+
+        normalized.append({
+            "name": name,
+            "quantity": 1,
+            "unit": "item",
+            "category": get_food_category(name),
+            "quantity_status": status,
+        })
+
+    return normalized
+
+
+
+def is_item_low_stock(item):
+    """
+    Use AI visual stock status for scanned foods.
+    Use numeric quantity and threshold for manually managed items.
+    """
+    visual_status = item.get("visual_stock_status")
+
+    if isinstance(visual_status, str):
+        visual_status = visual_status.strip().title()
+
+        if visual_status in {"Full", "Medium", "Low"}:
+            return visual_status == "Low"
+
+    return (
+        float(item["quantity"])
+        <= float(item["low_stock_threshold"])
+    )
+
+
 def show_inventory_summary(items):
     total = len(items)
-    low = sum(
-        item["quantity"] <= item["low_stock_threshold"]
-        for item in items
-    )
+    low = sum(is_item_low_stock(item) for item in items)
     available = total - low
 
     c1, c2, c3 = st.columns(3)
@@ -162,6 +301,9 @@ def show_inventory_summary(items):
     c2.metric("In stock", available)
     c3.metric("Low stock", low)
 
+# --------------------------------------------------
+# SCAN FRIDGE
+# --------------------------------------------------
 
 def scan_page():
     title_block(
@@ -170,10 +312,9 @@ def scan_page():
     )
 
     st.info(
-        "Privacy: photos are processed temporarily. "
-        "This app does not save uploaded image files. "
-        "Food recognition is currently a demo and does not truly identify "
-        "items in your photos."
+        "Your photos are processed temporarily and are not saved as image "
+        "files by this interface. Groq AI analyzes your photos to identify "
+        "foods and suggest recipes."
     )
 
     uploaded = st.file_uploader(
@@ -188,46 +329,106 @@ def scan_page():
         key="fridge_camera",
     )
 
-    image_bytes = [file.getvalue() for file in uploaded]
+    image_bytes = [file.getvalue() for file in (uploaded or [])]
+
     if camera_image is not None:
         image_bytes.append(camera_image.getvalue())
 
     if len(image_bytes) > 8:
-        st.error("Please use at most 8 images in total, including the camera photo.")
+        st.error(
+            "Please use at most 8 images in total, including the camera photo."
+        )
         return
 
     if image_bytes:
         st.subheader(f"Photos selected: {len(image_bytes)}")
         columns = st.columns(min(4, len(image_bytes)))
+
         for index, data in enumerate(image_bytes):
             with columns[index % len(columns)]:
-                st.image(data, caption=f"Photo {index + 1}", use_container_width=True)
+                st.image(
+                    data,
+                    caption=f"Photo {index + 1}",
+                    width="stretch",
+                )
 
-    if st.button("🔍 Analyze fridge", type="primary", disabled=not image_bytes):
+    if st.button(
+        "🔍 Analyze fridge",
+        type="primary",
+        disabled=not image_bytes,
+    ):
         try:
-            with st.spinner("Analyzing your photos..."):
-                detected = detect_foods(image_bytes)
-                record_scan([item["name"] for item in detected])
+            with st.spinner(
+                "Groq AI is analyzing your photos and preparing recipes..."
+            ):
+                analysis = analyze_fridge(image_bytes)
 
-            st.session_state["last_detected"] = detected
+                # IMPORTANT:
+                # The AI returns {"item": ..., "quantity": ...}.
+                # Convert it before displaying or saving to the database.
+                detected = normalize_detected_inventory(
+                    analysis.get("inventory", [])
+                )
+
+                suggested_recipes = analysis.get("suggested_recipes", [])
+                low_stock_alerts = analysis.get("low_stock_alerts", [])
+
+                if not detected:
+                    raise RuntimeError(
+                        "The AI response contained no valid food items. "
+                        "Please try another photo."
+                    )
+
+                # Save normalized food records to the existing database.
+                record_scan(detected)
+
+                st.session_state["last_detected"] = detected
+                st.session_state["last_suggested_recipes"] = suggested_recipes
+                st.session_state["last_low_stock_alerts"] = low_stock_alerts
+
             st.success(
-                f"Demo scan complete. {len(detected)} sample food items "
-                "were added to your inventory."
+                f"AI scan completed. {len(detected)} food items were detected "
+                "and the inventory was updated."
             )
             st.rerun()
-        except (ValueError, OSError) as error:
-            st.error(str(error))
 
-    detected = st.session_state.get("last_detected", [])
-    if detected:
-        st.subheader("Latest scan results")
-        st.caption("These are sample results, not AI-verified detections.")
-        for item in detected:
-            st.write(
-                f"**{item['name']}** — {item['quantity']} "
-                f"{item['unit']} · {item['category']}"
+        except (ValueError, OSError, RuntimeError) as error:
+            st.error(f"Could not analyze the photos: {error}")
+
+        except Exception as error:
+            st.error(
+                f"An unexpected error occurred during the scan: {error}"
             )
 
+    detected = st.session_state.get("last_detected", [])
+
+    if detected:
+        st.subheader("Latest scan results")
+
+        for item in detected:
+            name = item.get("name", "Unknown food")
+            status = item.get("quantity_status", "Not specified")
+            category = item.get("category", "Other")
+
+            st.write(f"**{name}** — {category} · Stock: {status}")
+
+    alerts = st.session_state.get("last_low_stock_alerts", [])
+
+    if alerts:
+        st.subheader("Low-stock alerts")
+
+        for alert in alerts:
+            if isinstance(alert, dict):
+                name = alert.get("name") or alert.get("item", "Food item")
+                message = alert.get("message", "Stock is running low.")
+                st.warning(f"**{name}:** {message}")
+            else:
+                st.warning(f"**{alert}**: Stock is running low.")
+
+
+# --------------------------------------------------
+# INVENTORY
+# --------------------------------------------------
 
 def inventory_page():
     title_block(
@@ -241,106 +442,155 @@ def inventory_page():
     with st.expander("➕ Add an inventory item", expanded=False):
         with st.form("add_inventory_form"):
             name = st.text_input("Food name")
+
             c1, c2 = st.columns(2)
-            quantity = c1.number_input("Quantity", min_value=0.0, value=1.0)
+
+            quantity = c1.number_input(
+                "Quantity",
+                min_value=0.0,
+                value=1.0,
+            )
+
             unit = c2.selectbox(
                 "Unit",
-                ["item", "items", "pack", "carton", "bottle", "kg", "g", "litre"],
+                [
+                    "item", "items", "pack", "carton",
+                    "bottle", "kg", "g", "litre",
+                ],
             )
+
             category = st.selectbox(
                 "Category",
-                ["Dairy", "Dairy & Eggs", "Vegetables", "Fruits",
-                 "Meat", "Pantry", "Other"],
+                [
+                    "Dairy", "Dairy & Eggs", "Vegetables", "Fruits",
+                    "Meat", "Meat & Seafood", "Pantry",
+                    "Condiments", "Other",
+                ],
             )
+
             threshold = st.number_input(
-                "Low-stock threshold", min_value=0.0, value=1.0
+                "Low-stock threshold",
+                min_value=0.0,
+                value=1.0,
             )
+
             submitted = st.form_submit_button("Add item")
 
             if submitted:
                 try:
-                    add_inventory_item(name, quantity, unit, category, threshold)
+                    add_inventory_item(
+                        name,
+                        quantity,
+                        unit,
+                        category,
+                        threshold,
+                    )
                     st.success("Inventory item saved.")
                     st.rerun()
-                except (ValueError, Exception) as error:
+                except Exception as error:
                     st.error(f"Could not save item: {error}")
 
     items = get_inventory()
+
     if not items:
         st.info("Your inventory is empty. Add an item or scan your fridge.")
         return
 
     st.subheader("Your food")
+
     for item in items:
-        is_low = item["quantity"] <= item["low_stock_threshold"]
+        is_low = is_item_low_stock(item)
+        visual_status = item.get("visual_stock_status")
+
         with st.container(border=True):
             left, middle, right = st.columns([3, 2, 1])
 
             left.markdown(f"**{item['name']}**")
             left.caption(item["category"])
+
             middle.write(f"{item['quantity']:g} {item['unit']}")
-            if is_low:
+
+            if visual_status in {"Full", "Medium", "Low"}:
+                if visual_status == "Low":
+                    middle.warning("Visual stock: Low")
+                else:
+                    middle.caption(f"Visual stock: {visual_status}")
+            elif is_low:
                 middle.warning("Low stock")
             else:
                 middle.caption("In stock")
 
-            edit_key = f"edit_inventory_{item['id']}"
-            delete_key = f"delete_inventory_{item['id']}"
-
-            if right.button("Edit", key=edit_key):
+            if right.button("Edit", key=f"edit_inventory_{item['id']}"):
                 st.session_state["editing_inventory_id"] = item["id"]
 
-            if right.button("Delete", key=delete_key):
+            if right.button("Delete", key=f"delete_inventory_{item['id']}"):
                 delete_inventory_item(item["id"])
                 st.rerun()
 
         if st.session_state.get("editing_inventory_id") == item["id"]:
             with st.form(f"edit_form_{item['id']}"):
-                new_name = st.text_input("Food name", value=item["name"])
-                c1, c2 = st.columns(2)
-                new_quantity = c1.number_input(
-                    "Quantity", min_value=0.0, value=float(item["quantity"]),
-                    key=f"qty_{item['id']}"
+                new_name = st.text_input(
+                    "Food name",
+                    value=item["name"],
                 )
+
+                units = [
+                    "item", "items", "pack", "carton",
+                    "bottle", "kg", "g", "litre",
+                ]
+
+                categories = [
+                    "Dairy", "Dairy & Eggs", "Vegetables", "Fruits",
+                    "Meat", "Meat & Seafood", "Pantry",
+                    "Condiments", "Other",
+                ]
+
+                c1, c2 = st.columns(2)
+
+                new_quantity = c1.number_input(
+                    "Quantity",
+                    min_value=0.0,
+                    value=float(item["quantity"]),
+                    key=f"qty_{item['id']}",
+                )
+
                 new_unit = c2.selectbox(
                     "Unit",
-                    ["item", "items", "pack", "carton", "bottle", "kg", "g", "litre"],
-                    index=(
-                        ["item", "items", "pack", "carton", "bottle", "kg", "g", "litre"]
-                        .index(item["unit"])
-                        if item["unit"] in
-                        ["item", "items", "pack", "carton", "bottle", "kg", "g", "litre"]
-                        else 0
-                    ),
+                    units,
+                    index=units.index(item["unit"]) if item["unit"] in units else 0,
                     key=f"unit_{item['id']}",
                 )
+
                 new_category = st.selectbox(
                     "Category",
-                    ["Dairy", "Dairy & Eggs", "Vegetables", "Fruits",
-                     "Meat", "Pantry", "Other"],
+                    categories,
                     index=(
-                        ["Dairy", "Dairy & Eggs", "Vegetables", "Fruits",
-                         "Meat", "Pantry", "Other"].index(item["category"])
-                        if item["category"] in
-                        ["Dairy", "Dairy & Eggs", "Vegetables", "Fruits",
-                         "Meat", "Pantry", "Other"] else 6
+                        categories.index(item["category"])
+                        if item["category"] in categories
+                        else categories.index("Other")
                     ),
                     key=f"category_{item['id']}",
                 )
+
                 new_threshold = st.number_input(
                     "Low-stock threshold",
                     min_value=0.0,
                     value=float(item["low_stock_threshold"]),
                     key=f"threshold_{item['id']}",
                 )
+
                 save = st.form_submit_button("Save changes")
                 cancel = st.form_submit_button("Cancel")
 
                 if save:
                     try:
                         update_inventory_item(
-                            item["id"], new_name, new_quantity, new_unit,
-                            new_category, new_threshold
+                            item["id"],
+                            new_name,
+                            new_quantity,
+                            new_unit,
+                            new_category,
+                            new_threshold,
                         )
                         del st.session_state["editing_inventory_id"]
                         st.success("Item updated.")
@@ -353,6 +603,10 @@ def inventory_page():
                     st.rerun()
 
 
+# --------------------------------------------------
+# GROCERY LIST
+# --------------------------------------------------
+
 def grocery_page():
     title_block(
         "🛒 Grocery list",
@@ -361,14 +615,24 @@ def grocery_page():
 
     with st.form("add_grocery_form"):
         name = st.text_input("Add a grocery item")
+
         c1, c2 = st.columns(2)
+
         quantity = c1.number_input(
-            "Quantity", min_value=0.1, value=1.0, step=1.0
+            "Quantity",
+            min_value=0.1,
+            value=1.0,
+            step=1.0,
         )
+
         unit = c2.selectbox(
             "Unit",
-            ["item", "items", "pack", "carton", "bottle", "kg", "g", "litre"],
+            [
+                "item", "items", "pack", "carton",
+                "bottle", "kg", "g", "litre",
+            ],
         )
+
         submitted = st.form_submit_button("Add to list")
 
         if submitted:
@@ -380,6 +644,7 @@ def grocery_page():
                 st.error(str(error))
 
     items = get_grocery_items()
+
     if not items:
         st.info("Your grocery list is empty.")
         return
@@ -389,12 +654,15 @@ def grocery_page():
 
     for item in items:
         c1, c2, c3 = st.columns([5, 2, 1])
+
         checked = c1.checkbox(
             item["name"],
             value=bool(item["checked"]),
             key=f"grocery_check_{item['id']}",
         )
+
         c2.write(f"{item['quantity']:g} {item['unit']}")
+
         if checked != bool(item["checked"]):
             set_grocery_checked(item["id"], checked)
             st.rerun()
@@ -407,62 +675,99 @@ def grocery_page():
             st.rerun()
 
 
+# --------------------------------------------------
+# RECIPES
+# --------------------------------------------------
+
 def recipes_page():
     title_block(
         "🍳 Recipes for your fridge",
-        "Find meals you can make and see what you need to buy.",
+        "Explore AI-generated meals based on the foods detected in your fridge.",
     )
 
-    inventory_names = [item["name"] for item in get_inventory()]
-    if not inventory_names:
-        st.info("Add food to your inventory to get recipe recommendations.")
+    recipes = st.session_state.get("last_suggested_recipes", [])
+
+    if not recipes:
+        st.info(
+            "No AI recipes are available yet. Open Scan Fridge, upload "
+            "your photos, and select Analyze fridge to generate recipes."
+        )
         return
 
-    recipes = recommend_recipes(inventory_names)
+    for index, recipe in enumerate(recipes):
+        name = recipe.get("name", f"Recipe {index + 1}")
+        used_ingredients = recipe.get("used_ingredients", [])
+        missing_ingredients = recipe.get(
+            "additional_ingredients_needed",
+            [],
+        )
+        instructions = recipe.get("instructions", [])
 
-    for recipe in recipes:
         with st.container(border=True):
-            st.subheader(recipe["name"])
-            st.caption(
-                f"{recipe['time']} minutes · {recipe['servings']} serving(s) "
-                f"· {recipe['match_percent']}% ingredient match"
-            )
-            st.write(recipe["description"])
-            st.progress(recipe["match_percent"] / 100)
+            st.subheader(name)
 
-            with st.expander("Ingredients and instructions"):
+            description = recipe.get("description", "")
+            if description:
+                st.write(description)
+
+            with st.expander("Ingredients and instructions", expanded=True):
                 st.markdown("**Ingredients you have**")
-                if recipe["available_ingredients"]:
-                    for ingredient in recipe["available_ingredients"]:
+
+                if used_ingredients:
+                    for ingredient in used_ingredients:
                         st.write(f"✓ {ingredient}")
                 else:
-                    st.write("None yet")
+                    st.write("No available ingredients were listed.")
 
                 st.markdown("**Missing ingredients**")
-                if recipe["missing_ingredients"]:
-                    for ingredient in recipe["missing_ingredients"]:
+
+                if missing_ingredients:
+                    for ingredient in missing_ingredients:
                         st.write(f"• {ingredient}")
 
                     if st.button(
                         "Add missing ingredients to grocery list",
-                        key=f"missing_{recipe['name']}",
+                        key=f"missing_{index}_{name}",
                     ):
-                        for ingredient in recipe["missing_ingredients"]:
-                            add_grocery_item(ingredient)
-                        st.success("Missing ingredients added to your list.")
-                        st.rerun()
+                        added_count = 0
+
+                        for ingredient in missing_ingredients:
+                            try:
+                                add_grocery_item(ingredient)
+                                added_count += 1
+                            except ValueError as error:
+                                st.warning(
+                                    f"Could not add {ingredient}: {error}"
+                                )
+
+                        if added_count:
+                            st.success(
+                                f"Added {added_count} ingredient(s) "
+                                "to your grocery list."
+                            )
+                            st.rerun()
                 else:
                     st.success("You have all the listed ingredients!")
 
                 st.markdown("**Instructions**")
-                for step_number, instruction in enumerate(
-                    recipe["instructions"], start=1
-                ):
-                    st.write(f"{step_number}. {instruction}")
 
+                if instructions:
+                    for step_number, instruction in enumerate(
+                        instructions,
+                        start=1,
+                    ):
+                        st.write(f"{step_number}. {instruction}")
+                else:
+                    st.write("No cooking instructions were provided.")
+
+
+# --------------------------------------------------
+# NAVIGATION
+# --------------------------------------------------
 
 st.sidebar.title("🥑 Fridge Scan")
 st.sidebar.caption("Your kitchen, organized.")
+
 page = st.sidebar.radio(
     "Navigate",
     ["Scan Fridge", "Inventory", "Grocery List", "Recipes"],
@@ -478,4 +783,4 @@ else:
     recipes_page()
 
 st.sidebar.divider()
-st.sidebar.caption("Local prototype · Demo food detection")
+st.sidebar.caption("Local prototype · Groq AI food analysis")
